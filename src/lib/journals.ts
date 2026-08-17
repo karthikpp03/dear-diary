@@ -62,6 +62,46 @@ export async function getEntryById(
   return data ? rowToEntry(data as JournalRow) : null;
 }
 
+// Updates only the generated journal text for an entry. The raw_message the
+// user originally typed, and every AI-generated field besides the journal
+// text itself, are left untouched — there's no UI for editing those yet.
+//
+// RLS's `using (auth.uid() = user_id)` clause on the update policy means
+// this can only ever match a row the caller owns; if `id` belongs to another
+// user (or doesn't exist), zero rows match and we return null.
+export async function updateEntryJournalText(
+  supabase: SupabaseClient,
+  id: string,
+  journalText: string
+): Promise<JournalEntry | null> {
+  const { data, error } = await supabase
+    .from("journals")
+    .update({ journal: journalText })
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data ? rowToEntry(data as JournalRow) : null;
+}
+
+// Same ownership guarantee as above, enforced by the delete policy's
+// `using (auth.uid() = user_id)` clause.
+export async function deleteEntry(
+  supabase: SupabaseClient,
+  id: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("journals")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return !!data;
+}
+
 export async function insertEntry(
   supabase: SupabaseClient,
   userId: string,

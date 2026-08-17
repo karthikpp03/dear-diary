@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import Composer from "@/components/Composer";
 import EntryCard from "@/components/EntryCard";
@@ -43,17 +44,36 @@ export default function Home() {
     router.refresh();
   };
 
+  const handleEntryUpdated = (updated: JournalEntry) => {
+    setEntries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
+    setSelected(updated);
+  };
+
+  const handleEntryDeleted = (id: string) => {
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    setSelected(null);
+  };
+
   return (
     <main className="relative min-h-screen overflow-x-hidden">
       <AmbientBackground />
 
-      <button
-        onClick={handleSignOut}
-        className="fixed right-5 top-5 z-40 text-xs tracking-wide underline-offset-4 hover:underline"
-        style={{ color: "var(--text-muted)", fontFamily: "var(--font-ui)" }}
-      >
-        Sign out
-      </button>
+      <div className="fixed right-5 top-5 z-40 flex items-center gap-4">
+        <Link
+          href="/history"
+          className="text-xs tracking-wide underline-offset-4 hover:underline"
+          style={{ color: "var(--text-muted)", fontFamily: "var(--font-ui)" }}
+        >
+          History
+        </Link>
+        <button
+          onClick={handleSignOut}
+          className="text-xs tracking-wide underline-offset-4 hover:underline"
+          style={{ color: "var(--text-muted)", fontFamily: "var(--font-ui)" }}
+        >
+          Sign out
+        </button>
+      </div>
 
       <div className="relative mx-auto flex max-w-2xl flex-col px-5 pb-24 pt-16 sm:pt-24">
         <motion.div
@@ -136,7 +156,12 @@ export default function Home() {
         </div>
       </div>
 
-      <EntryModal entry={selected} onClose={() => setSelected(null)} />
+      <EntryModal
+        entry={selected}
+        onClose={() => setSelected(null)}
+        onUpdated={handleEntryUpdated}
+        onDeleted={handleEntryDeleted}
+      />
     </main>
   );
 }

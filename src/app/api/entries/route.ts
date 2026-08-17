@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAllEntries, insertEntry } from "@/lib/journals";
-import { generateJournalEntry } from "@/lib/openai";
+import { deleteEntry, getEntryById, updateEntryJournalText } from "@/lib/journals";
 
-export async function GET() {
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -13,16 +15,24 @@ export async function GET() {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 
+  const { id } = await params;
+
   try {
-    const entries = await getAllEntries(supabase);
-    return NextResponse.json({ entries });
+    const entry = await getEntryById(supabase, id);
+    if (!entry) {
+      return NextResponse.json({ error: "Entry not found." }, { status: 404 });
+    }
+    return NextResponse.json({ entry });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Something went wrong.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -32,44 +42,58 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 
-  try {
-    const body = await req.json();
-    const rawMessage: string = (body?.message ?? "").trim();
+  const { id } = await params;
 
-    if (!rawMessage) {
+  try {
+    const body = await req.json().catch(() => null);
+    const journalText =
+      typeof body?.journalText === "string" ? body.journalText.trim() : "";
+
+    if (!journalText) {
       return NextResponse.json(
-        { error: "Message cannot be empty." },
+        { error: "Journal entry can't be empty." },
         { status: 400 }
       );
     }
 
-    const generated = await generateJournalEntry(rawMessage);
-
-    const now = new Date();
-    const formattedDate = now.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-    const weekday = now.toLocaleDateString("en-US", { weekday: "long" });
-    const date = `${formattedDate} — ${weekday}`;
-
-    const entry = await insertEntry(supabase, user.id, {
-      date,
-      rawMessage,
-      journalText: generated.journalText,
-      mood: generated.mood,
-      energy: generated.energy,
-      highlights: generated.highlights,
-      reflection: generated.reflection,
-      tags: generated.tags,
-    });
-
-    return NextResponse.json({ entry }, { status: 201 });
+    // RLS scopes this to rows owned by `user` — see updateEntryJournalText.
+    const entry = await updateEntryJournalText(supabase, id, journalText);
+    if (!entry) {
+      return NextResponse.json({ error: "Entry not found." }, { status: 404 });
+    }
+    return NextResponse.json({ entry });
   } catch (err) {
     console.error(err);
-    const message =
-      err instanceof Error ? err.message : "Something went wrong.";
+    const message = err instanceof Error ? err.message : "Something went wrong.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  try {
+    // RLS scopes this to rows owned by `user` — see deleteEntry.
+    const deleted = await deleteEntry(supabase, id);
+    if (!deleted) {
+      return NextResponse.json({ error: "Entry not found." }, { status: 404 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    const message = err instanceof Error ? err.message : "Something went wrong.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
