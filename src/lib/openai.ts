@@ -1,0 +1,90 @@
+import OpenAI from "openai";
+import type { GeneratedJournal } from "@/types/entry";
+
+let client: OpenAI | null = null;
+
+function getClient(): OpenAI {
+  if (!client) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        "OPENAI_API_KEY is not set. Add it to your .env.local file."
+      );
+    }
+    client = new OpenAI({ apiKey });
+  }
+  return client;
+}
+
+const SYSTEM_PROMPT = `You are a gentle, perceptive journaling companion. The user will send you a short, casual message about their day — it may be in English, Tanglish (Tamil written in English), broken English, or slang. Your job is to turn it into a natural, first-person journal entry.
+
+Rules you must follow strictly:
+- Never invent events, people, or details that are not implied by the message.
+- Preserve the user's actual meaning and emotional tone — do not exaggerate or flatten it.
+- Write in warm, natural, first-person prose, like the user is writing their own diary.
+- Keep short messages short. Only write a longer entry if the user actually shared more.
+- "reflection" should be a short, genuine thought — only include something meaningful if the message actually supports it. It's okay for it to be simple.
+- "highlights" should be short factual phrases pulled from what actually happened (2-5 items, fewer for short messages).
+- "tags" should be lowercase, single words or short hyphenated phrases relevant to the content (2-5 tags).
+- "energy" is an integer from 1 to 10 based on the tone/content of the message.
+- "mood" is a single short word or two (e.g. "Calm", "Tired", "Excited", "Content", "Stressed").
+- Do not moralize, give advice, or add therapy-speak. Just reflect what was shared.`;
+
+export async function generateJournalEntry(
+  rawMessage: string
+): Promise<GeneratedJournal> {
+  const openai = getClient();
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: rawMessage },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "journal_entry",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            journalText: {
+              type: "string",
+              description: "The rewritten first-person journal entry.",
+            },
+            mood: { type: "string" },
+            energy: { type: "integer", minimum: 1, maximum: 10 },
+            highlights: {
+              type: "array",
+              items: { type: "string" },
+            },
+            reflection: { type: "string" },
+            tags: {
+              type: "array",
+              items: { type: "string" },
+            },
+          },
+          required: [
+            "journalText",
+            "mood",
+            "energy",
+            "highlights",
+            "reflection",
+            "tags",
+          ],
+          additionalProperties: false,
+        },
+      },
+    },
+    temperature: 0.7,
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error("No response from OpenAI.");
+  }
+
+  const parsed = JSON.parse(content) as GeneratedJournal;
+  return parsed;
+}

@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+:root {
+  --bg-base: #17130f;
+  --bg-base-2: #1c1610;
+  --bg-elevated: #221a13;
+  --bg-elevated-hover: #291f16;
+  --border-hairline: #362b20;
+  --border-hairline-soft: #2a2118;
+
+  --text-primary: #f3ead9;
+  --text-secondary: #cabca4;
+  --text-muted: #94876f;
+
+  --accent-ember: #e8aa4c;
+  --accent-ember-soft: #cf9a52;
+  --accent-moss: #93a679;
+  --accent-dusk: #8b9bb4;
+  --accent-clay: #c17b5f;
+
+  --font-display: "Fraunces", serif;
+  --font-reading: "Source Serif 4", serif;
+  --font-ui: "Inter", sans-serif;
+
+  --shadow-soft: 0 8px 30px -10px rgba(0, 0, 0, 0.55);
+  --shadow-lift: 0 16px 40px -12px rgba(0, 0, 0, 0.65);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent-ember);
+  color: #17130f;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-hairline);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-ember-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Ambient drifting glow — the page's signature element */
+.ember-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  pointer-events: none;
+}
+
+@keyframes drift-one {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(30px, -40px) scale(1.08);
+  }
+}
+
+@keyframes drift-two {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-40px, 30px) scale(1.05);
+  }
+}
+
+.animate-drift-one {
+  animation: drift-one 22s ease-in-out infinite;
+}
+.animate-drift-two {
+  animation: drift-two 26s ease-in-out infinite;
+}
+
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+.animate-flicker {
+  animation: flicker 6s ease-in-out infinite;
+}
