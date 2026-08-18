@@ -1,3 +1,4 @@
+-- supabase/schema.sql
 -- Run this once in the Supabase SQL editor (or via `supabase db push`)
 -- for a new project before deploying.
 
@@ -12,9 +13,14 @@ create table if not exists journals (
   highlights jsonb not null default '[]'::jsonb,
   reflection text not null default '',
   tags jsonb not null default '[]'::jsonb,
+  companion_reply text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Migration for a database that already has the `journals` table from
+-- before the companion reply feature existed. Safe to re-run.
+alter table journals add column if not exists companion_reply text not null default '';
 
 create index if not exists journals_user_id_created_at_idx
   on journals (user_id, created_at desc);

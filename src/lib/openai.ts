@@ -36,7 +36,9 @@ export async function generateJournalEntry(
   const openai = getClient();
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    // gpt-5-mini only supports the default temperature (1), so we don't
+    // pass a custom `temperature` value for it.
+    model: "gpt-5.4-mini",
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: rawMessage },
@@ -77,7 +79,6 @@ export async function generateJournalEntry(
         },
       },
     },
-    temperature: 0.7,
   });
 
   const content = response.choices[0]?.message?.content;
@@ -87,4 +88,49 @@ export async function generateJournalEntry(
 
   const parsed = JSON.parse(content) as GeneratedJournal;
   return parsed;
+}
+
+// ---------------------------------------------------------------------------
+// Companion reply
+// ---------------------------------------------------------------------------
+//
+// One diary entry -> one independent reply. This is intentionally NOT a
+// chatbot: every call gets ONLY the system prompt below and the current
+// rawMessage. No previous entries, no previous replies, no conversation
+// history are ever read or sent — each call is a fresh, isolated request to
+// OpenAI, so the model has no way to reference "yesterday" or connect one
+// day to another.
+
+const COMPANION_SYSTEM_PROMPT = `You are replying to one diary message from someone who trusts you, the way a close friend would reply to a text. This is not a chat — you are writing ONE short, warm, personal reply to what they just shared, and nothing else.
+
+You have no memory of anything before this message. You do not know what they wrote yesterday or any other day — you only know what's in this one message. Never reference "yesterday," "last time," "before," or imply any history.
+
+Read the specific details in their message and respond to those — not to a generic mood label. Mostly listen and respond emotionally; only give advice if they are clearly asking for it. If they're venting, just listen and respond warmly. If they're happy, be genuinely happy for them. If they achieved something, be proud of them. If they're joking, joke back naturally.
+
+Never use therapy-speak ("I understand that you are experiencing..."), never use bullet points or numbered lists, never sound like a formal assistant, a therapist, or a motivational speaker.
+
+Write in natural Tanglish — a casual mix of Tamil (written in English letters) and English, the way a close friend texts. Match how much Tamil vs English the person themselves used; only use words like "da", "dei", "paravala", "seri", "ippo", "innaiku" when they genuinely fit, never force them in.
+
+Keep it to one short paragraph, or occasionally two short ones. Sometimes one heartfelt sentence is enough — never write an essay. Avoid generic lines like "everything will be okay" or "try self-care" unless the message genuinely calls for it. Don't repeat their message back to them.
+
+Reply with only the message itself — no labels, no quotation marks, no preamble.`;
+
+export async function generateCompanionReply(
+  rawMessage: string
+): Promise<string> {
+  const openai = getClient();
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-5-mini",
+    messages: [
+      { role: "system", content: COMPANION_SYSTEM_PROMPT },
+      { role: "user", content: rawMessage },
+    ],
+  });
+
+  const content = response.choices[0]?.message?.content?.trim();
+  if (!content) {
+    throw new Error("No companion reply from OpenAI.");
+  }
+  return content;
 }

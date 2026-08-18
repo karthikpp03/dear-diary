@@ -1,5 +1,7 @@
 "use client";
 
+// src/app/page.tsx
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -18,10 +20,25 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
+    let cancelled = false;
+
     fetch("/api/entries")
-      .then((res) => res.json())
-      .then((data) => setEntries(data.entries ?? []))
-      .finally(() => setIsLoading(false));
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error ?? "Couldn't load your entries.");
+        if (!cancelled) setEntries(data.entries ?? []);
+      })
+      .catch(() => {
+        // Initial load failing quietly falls back to an empty state rather
+        // than a broken page — the composer still works either way.
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSubmit = async (message: string) => {
@@ -30,7 +47,7 @@ export default function Home() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       throw new Error(data.error ?? "Something went wrong.");
     }

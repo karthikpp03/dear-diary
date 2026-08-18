@@ -1,3 +1,4 @@
+// src/lib/journals.ts
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { JournalEntry } from "@/types/entry";
 
@@ -12,6 +13,7 @@ type JournalRow = {
   highlights: string[];
   reflection: string;
   tags: string[];
+  companion_reply: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -28,6 +30,7 @@ function rowToEntry(row: JournalRow): JournalEntry {
     highlights: row.highlights ?? [],
     reflection: row.reflection,
     tags: row.tags ?? [],
+    companionReply: row.companion_reply ?? "",
     createdAt: row.created_at,
   };
 }
@@ -114,6 +117,7 @@ export async function insertEntry(
     highlights: string[];
     reflection: string;
     tags: string[];
+    companionReply: string;
   }
 ): Promise<JournalEntry> {
   const { data, error } = await supabase
@@ -128,6 +132,7 @@ export async function insertEntry(
       highlights: entry.highlights,
       reflection: entry.reflection,
       tags: entry.tags,
+      companion_reply: entry.companionReply,
     })
     .select("*")
     .single();

@@ -1,5 +1,7 @@
 "use client";
 
+// src/components/EntryModal.tsx
+
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { JournalEntry } from "@/types/entry";
@@ -304,6 +306,26 @@ export default function EntryModal({
                 </div>
               )}
 
+              {entry.companionReply && (
+                <div
+                  className="mb-6 rounded-2xl px-5 py-4"
+                  style={{ background: "var(--bg-base-2)", borderLeft: "2px solid var(--accent-dusk)" }}
+                >
+                  <p
+                    className="mb-2 text-xs tracking-[0.15em] uppercase"
+                    style={{ color: "var(--text-muted)", fontFamily: "var(--font-ui)" }}
+                  >
+                    A little note for you 💌
+                  </p>
+                  <p
+                    className="whitespace-pre-wrap text-[0.98rem] leading-relaxed"
+                    style={{ color: "var(--text-secondary)", fontFamily: "var(--font-reading)" }}
+                  >
+                    {entry.companionReply}
+                  </p>
+                </div>
+              )}
+
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <button
                   onClick={() => setShowRaw((s) => !s)}
@@ -363,10 +385,10 @@ export default function EntryModal({
                   }}
                 >
                   <p
-                    className="mb-3 text-sm leading-relaxed"
-                    style={{ color: "var(--text-secondary)", fontFamily: "var(--font-ui)" }}
+                    className="mb-3 text-sm leading-relaxed italic"
+                    style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
                   >
-                    Delete this entry for good? This can&apos;t be undone.
+                    Delete this memory?
                   </p>
                   {deleteError && (
                     <p
@@ -389,7 +411,7 @@ export default function EntryModal({
                         fontFamily: "var(--font-ui)",
                       }}
                     >
-                      {isDeleting ? "Deleting…" : "Yes, delete it"}
+                      {isDeleting ? "Deleting…" : "Delete"}
                     </motion.button>
                     <button
                       onClick={() => {

@@ -1,5 +1,7 @@
 "use client";
 
+// src/app/history/page.tsx
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";

@@ -1,3 +1,4 @@
+// src/types/entry.ts
 export interface JournalEntry {
   id: string;
   date: string; // e.g. "17 August 2026 — Monday"
@@ -9,6 +10,7 @@ export interface JournalEntry {
   highlights: string[];
   reflection: string;
   tags: string[];
+  companionReply: string; // isolated, per-entry reply — see src/lib/openai.ts
   createdAt: string; // ISO timestamp
 }
 

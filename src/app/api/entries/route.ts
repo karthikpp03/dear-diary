@@ -1,7 +1,8 @@
+// src/app/api/entries/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getAllEntries, insertEntry } from "@/lib/journals";
-import { generateJournalEntry } from "@/lib/openai";
+import { generateCompanionReply, generateJournalEntry } from "@/lib/openai";
 
 export async function GET() {
   const supabase = await createClient();
@@ -43,7 +44,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const generated = await generateJournalEntry(rawMessage);
+    // Journal generation and the companion reply are independent, isolated
+    // calls to OpenAI — both receive ONLY this rawMessage, nothing else. If
+    // the companion reply fails for any reason, we don't want that to lose
+    // the person's diary entry, so it falls back to an empty string (the UI
+    // simply hides the "note" section when it's empty) rather than
+    // rejecting the whole request.
+    const [generated, companionReply] = await Promise.all([
+      generateJournalEntry(rawMessage),
+      generateCompanionReply(rawMessage).catch((err) => {
+        console.error("companion reply generation failed:", err);
+        return "";
+      }),
+    ]);
 
     const now = new Date();
     const formattedDate = now.toLocaleDateString("en-GB", {
@@ -63,6 +76,7 @@ export async function POST(req: NextRequest) {
       highlights: generated.highlights,
       reflection: generated.reflection,
       tags: generated.tags,
+      companionReply,
     });
 
     return NextResponse.json({ entry }, { status: 201 });
