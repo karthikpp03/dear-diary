@@ -2,7 +2,7 @@
 
 // src/components/EntryModal.tsx
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { JournalEntry } from "@/types/entry";
 import { moodColor } from "@/lib/mood";
@@ -12,6 +12,10 @@ interface EntryModalProps {
   onClose: () => void;
   onUpdated?: (entry: JournalEntry) => void;
   onDeleted?: (id: string) => void;
+  // True only for the entry the user just created in this session — tells
+  // the companion note to play its one-time reveal glow instead of just
+  // appearing statically like it does for every previously-saved entry.
+  revealCompanion?: boolean;
 }
 
 export default function EntryModal({
@@ -19,6 +23,7 @@ export default function EntryModal({
   onClose,
   onUpdated,
   onDeleted,
+  revealCompanion = false,
 }: EntryModalProps) {
   const [showRaw, setShowRaw] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -29,6 +34,7 @@ export default function EntryModal({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [lastEntryId, setLastEntryId] = useState<string | undefined>(entry?.id);
+  const [glowActive, setGlowActive] = useState(false);
 
   const resetActionState = () => {
     setIsEditing(false);
@@ -38,14 +44,27 @@ export default function EntryModal({
   };
 
   // The modal can swap straight from one entry to another (e.g. after a
-  // save) without unmounting, so reset any in-progress edit/delete UI
-  // whenever the entry it's showing changes. Adjusting state during render
-  // (rather than in an effect) avoids an extra render pass — see
+  // save) without unmounting, so reset any in-progress edit/delete UI —
+  // and decide whether to arm the one-time companion glow — whenever the
+  // entry it's showing changes. Adjusting state during render (rather than
+  // in an effect) avoids an extra render pass — see
   // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
   if (entry?.id !== lastEntryId) {
     setLastEntryId(entry?.id);
     resetActionState();
+    setGlowActive(Boolean(revealCompanion && entry?.companionReply));
   }
+
+  // One-time "you just received a little message" glow around the
+  // companion note — only for the entry that was just created, and only for
+  // a few seconds, then it settles back to looking like any other entry.
+  // The timer callback (not the effect body itself) is what turns it off,
+  // which is the supported pattern for a subscription-style side effect.
+  useEffect(() => {
+    if (!glowActive) return;
+    const timer = setTimeout(() => setGlowActive(false), 2600);
+    return () => clearTimeout(timer);
+  }, [glowActive, entry?.id]);
 
   const handleStartEdit = () => {
     if (!entry) return;
@@ -307,15 +326,35 @@ export default function EntryModal({
               )}
 
               {entry.companionReply && (
-                <div
+                <motion.div
+                  key={entry.id}
+                  initial={
+                    revealCompanion ? { opacity: 0, y: 10 } : { opacity: 1, y: 0 }
+                  }
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.7, delay: revealCompanion ? 0.4 : 0, ease: "easeOut" }}
                   className="mb-6 rounded-2xl px-5 py-4"
-                  style={{ background: "var(--bg-base-2)", borderLeft: "2px solid var(--accent-dusk)" }}
+                  style={{
+                    background: "var(--bg-base-2)",
+                    borderLeft: "2px solid var(--accent-dusk)",
+                    boxShadow: glowActive
+                      ? "0 0 0 1px var(--accent-dusk), 0 0 28px -4px var(--accent-dusk)"
+                      : "0 0 0 0 transparent",
+                    transition: "box-shadow 1.8s ease",
+                  }}
                 >
                   <p
-                    className="mb-2 text-xs tracking-[0.15em] uppercase"
+                    className="mb-2 flex items-center gap-1.5 text-xs tracking-[0.15em] uppercase"
                     style={{ color: "var(--text-muted)", fontFamily: "var(--font-ui)" }}
                   >
-                    A little note for you 💌
+                    A little note for you
+                    <motion.span
+                      animate={glowActive ? { scale: [1, 1.4, 1] } : { scale: 1 }}
+                      transition={{ duration: 0.9, delay: revealCompanion ? 0.7 : 0, ease: "easeInOut" }}
+                      style={{ display: "inline-block" }}
+                    >
+                      💌
+                    </motion.span>
                   </p>
                   <p
                     className="whitespace-pre-wrap text-[0.98rem] leading-relaxed"
@@ -323,7 +362,7 @@ export default function EntryModal({
                   >
                     {entry.companionReply}
                   </p>
-                </div>
+                </motion.div>
               )}
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">

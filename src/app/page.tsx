@@ -17,6 +17,7 @@ export default function Home() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [selected, setSelected] = useState<JournalEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -52,6 +53,10 @@ export default function Home() {
       throw new Error(data.error ?? "Something went wrong.");
     }
     setEntries((prev) => [data.entry, ...prev]);
+    // Open the freshly saved entry so the companion note's reveal animation
+    // (see EntryModal) has something to reveal itself into.
+    setSelected(data.entry);
+    setJustCreatedId(data.entry.id);
   };
 
   const handleSignOut = async () => {
@@ -175,9 +180,13 @@ export default function Home() {
 
       <EntryModal
         entry={selected}
-        onClose={() => setSelected(null)}
+        onClose={() => {
+          setSelected(null);
+          setJustCreatedId(null);
+        }}
         onUpdated={handleEntryUpdated}
         onDeleted={handleEntryDeleted}
+        revealCompanion={selected?.id === justCreatedId}
       />
     </main>
   );
